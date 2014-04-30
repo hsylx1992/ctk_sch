@@ -52,7 +52,7 @@ init_runqueues() {
 	run_queues = &run_queue_init;
 	/*
 printf("pushing...\n");
-	list_push(run_queues->arrays[0].queue[0].list, process);
+	list_add(run_queues->arrays[0].queue[0].list, process);
 
 	p = list_head(run_queues->arrays[0].queue[0].list);
 printf("head -- prio:%d correct:%d\n", p->add->prio, process->add->prio);
@@ -241,7 +241,8 @@ printf("check_map [%d] - offset [%d]\n", ret, i-1+1);
 	if (p->add->state == SCH_PROCESS_STATE_RUNNING) {
 		// if the posted process(stroed in p) is still running
 		// we put it back to the list
-		list_push(run_queues->arrays->queue[ret].list, p);
+		list_add(run_queues->arrays[0].queue[p->add->prio].list,
+								sch_process_current);
 	} else {
 		p = list_head(run_queues->arrays->queue[ret].list);
 		if (p == NULL) {				
@@ -280,7 +281,7 @@ ct_callback_sch_tick(void *ptr)
  *	To use the list lib function in contiki, you have to define a *next pointer 
  *in the first place of a struct. MUST at the first place!
  *	For example: struct structname{struct structname * next; int otherfield;}
- *	reason: look up the list_push function, there is a forced translation
+ *	reason: there are a forced translation in the list lib function
  */
 #define PROCESS_SCHED(name, strname, prio)				\
 	PROCESS(name, strname);		\
@@ -301,11 +302,9 @@ ct_callback_sch_tick(void *ptr)
 	do{	\
 		sch_process_current = &sch_##proname;	\
 		setbit_map( &(run_queues->arrays[0].map), (add_##proname).prio );	\
-		list_push(run_queues->arrays[0].queue[(add_##proname).prio].list, sch_process_current);	\
+		list_add(run_queues->arrays[0].queue[(add_##proname).prio].list,\
+								sch_process_current);\
 		} while(0)
-//		printf("<-test -> name - [%s] \n      sch name - [%s]\n", proname.name, (sch_##proname).old->name);
-//		list_push(run_queues->arrays[0].queue[(add_##proname).prio].list, sch_process_current);
-//	}while(0)
 
 /*---------------------------------------------------------------------------*/
 #define PROCESS_YIELD_SCH()	do {\
@@ -323,7 +322,7 @@ ct_callback_sch_tick(void *ptr)
 void
 sch_setprio(struct sch_process *p, uint8_t i) {
 	list_remove(run_queues->arrays[0].queue[p->add->prio].list, p);
-	list_push(run_queues->arrays[0].queue[i].list, p);
+	list_add(run_queues->arrays[0].queue[i].list, p);
 	setbit_map(&(run_queues->arrays[0].map), i);
 }
 #define SCH_SETPRIO_PROCESS(proname, i) do {\
@@ -501,29 +500,3 @@ PROCESS_THREAD(end_process, ev, data)
 }
 
 /*---------------------------------------------------------------------------*/
-
-void
-test_list()
-{
-	struct prio_map_list s_list_test[2];
-	struct sch_add_process 	add = {0, 0, 0, 0, 0, 0};
-	struct process 					old = {NULL, "HI", NULL};
-	struct sch_process	pvalue = {NULL, NULL};
-	struct sch_process	processvalue = 
-		{NULL, (struct process *)&old, (struct sch_add_process *)&add};
-
-	struct sch_process	*p = &pvalue;
-	struct sch_process	*process = &processvalue;
-	
-	process->add->prio = 10;
-
-printf("initing...\n");
-	LIST_STRUCT_INIT(&s_list_test[0], list);
-printf("pushing...\n");
-	list_push(s_list_test[0].list, process);
-
-	p = list_head(s_list_test[0].list);
-printf("head -- prio:%d correct:%d\n", p->add->prio, process->add->prio);
-	p = list_pop(s_list_test[0].list);
-printf("pop  -- prio:%d correct:%d\n", p->add->prio, process->add->prio);
-}
